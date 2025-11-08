@@ -50,20 +50,28 @@ fn run<I>(capture: SolverInternal, input: NonNull<()>) -> Solution {
 #[derive(Clone, Copy, Debug, Hash)]
 struct AdventParser {
   capture: fn(input: &[u8]) -> (),
-  parse_erased: fn(&Self, input: &[u8]) -> (Erased, Duration),
-  parse_bench: fn(&Self, input: &[u8]) -> Duration,
+  parse_erased_fn: fn(&Self, input: &[u8]) -> (Erased, Duration),
+  parse_bench_fn: fn(&Self, input: &[u8]) -> Duration,
 }
 
 impl AdventParser {
   const fn new<T>(f: fn(&[u8]) -> T) -> Self {
     Self {
       capture: unsafe { core::mem::transmute(f) },
-      parse_erased: Self::parse_erased::<T>,
-      parse_bench: Self::parse_bench::<T>,
+      parse_erased_fn: Self::parse_erased_fn::<T>,
+      parse_bench_fn: Self::parse_bench_fn::<T>,
     }
   }
 
-  fn parse_erased<T>(self: &AdventParser, input: &[u8]) -> (Erased, Duration) {
+  pub fn parse_erased(&self, input: &[u8]) -> (Erased, Duration) {
+    (self.parse_erased_fn)(self, input)
+  }
+
+  pub fn parse_bench(&self, input: &[u8]) -> Duration {
+    (self.parse_bench_fn)(self, input)
+  }
+
+  fn parse_erased_fn<T>(self: &AdventParser, input: &[u8]) -> (Erased, Duration) {
     // SAFETY: we were originally given a fn(&[u8]) -> T
     let f: fn(&[u8]) -> T = unsafe { core::mem::transmute(self.capture) };
     let start = Instant::now();
@@ -72,7 +80,7 @@ impl AdventParser {
     (Erased::new(Box::new(t)), time)
   }
 
-  fn parse_bench<T>(self: &AdventParser, input: &[u8]) -> Duration {
+  fn parse_bench_fn<T>(self: &AdventParser, input: &[u8]) -> Duration {
     // SAFETY: we were originally given a fn(&[u8]) -> T
     let f: fn(&[u8]) -> T = unsafe { core::mem::transmute(self.capture) };
     core::hint::black_box((|| {
@@ -133,7 +141,7 @@ impl AdventSolver {
 
   pub fn run(&self, input: &[u8]) {
     if let Some((p, r)) = self.p {
-      let (input, input_time) = (p.parse_erased)(&p, input);
+      let (input, input_time) = p.parse_erased(input);
       println!("parse: {}us", input_time.as_micros());
 
       let start = Instant::now();
