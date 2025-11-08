@@ -214,25 +214,22 @@ impl<Collection> State<Collection> {
   }
 }
 
-fn parse(input: &[u8]) -> impl Iterator<Item = Instruction> {
-  input.split(|c| *c == b',').map(|s| {
-    unsafe { str::from_utf8_unchecked(s) }
-      .trim()
-      .parse()
-      .expect("correctly formatted input")
-  })
+fn parse(input: &[u8]) -> Input {
+  Input {
+    insts: input
+      .split(|c| *c == b',')
+      .map(|s| {
+        unsafe { str::from_utf8_unchecked(s) }
+          .trim()
+          .parse()
+          .expect("correctly formatted input")
+      })
+      .collect(),
+  }
 }
 
 struct Input {
   insts: Box<[Instruction]>,
-}
-
-impl aoc::AocParser for Input {
-  fn parse(input: &[u8]) -> Self {
-    Self {
-      insts: parse(input).collect(),
-    }
-  }
 }
 
 fn solve_a(input: &Input) -> Solution {
@@ -253,4 +250,4 @@ fn solve_b(input: &Input) -> Solution {
   unsafe { Solution::Number(state.err().unwrap_unchecked().taxicab()) }
 }
 
-impl_solver!(1, Input, solve_a, solve_b);
+impl_solver!(1, parse, solve_a, solve_b);

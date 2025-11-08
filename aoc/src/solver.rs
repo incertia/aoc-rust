@@ -1,11 +1,11 @@
-use crate::{AocParser, Solution};
+use crate::Solution;
 
 use core::ptr::NonNull;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 type SolverInternal = fn(input: &()) -> Solution;
+type ParserFn<I> = fn(input: &[u8]) -> I;
 type SolverFn<I> = fn(input: &I) -> Solution;
-type ParseInternal = fn(input: &[u8]) -> Erased;
 type RunnerInternal = fn(capture: SolverInternal, input: NonNull<()>) -> Solution;
 
 struct Erased {
@@ -47,8 +47,40 @@ fn run<I>(capture: SolverInternal, input: NonNull<()>) -> Solution {
   f(unsafe { input.as_ref() })
 }
 
-fn erased_parser<I: AocParser>(input: &[u8]) -> Erased {
-  Erased::new(Box::new(I::parse(input)))
+#[derive(Clone, Copy, Debug, Hash)]
+struct AdventParser {
+  capture: fn(input: &[u8]) -> (),
+  parse_erased: fn(&Self, input: &[u8]) -> (Erased, Duration),
+  parse_bench: fn(&Self, input: &[u8]) -> Duration,
+}
+
+impl AdventParser {
+  const fn new<T>(f: fn(&[u8]) -> T) -> Self {
+    Self {
+      capture: unsafe { core::mem::transmute(f) },
+      parse_erased: Self::parse_erased::<T>,
+      parse_bench: Self::parse_bench::<T>,
+    }
+  }
+
+  fn parse_erased<T>(self: &AdventParser, input: &[u8]) -> (Erased, Duration) {
+    // SAFETY: we were originally given a fn(&[u8]) -> T
+    let f: fn(&[u8]) -> T = unsafe { core::mem::transmute(self.capture) };
+    let start = Instant::now();
+    let t = f(input);
+    let time = start.elapsed();
+    (Erased::new(Box::new(t)), time)
+  }
+
+  fn parse_bench<T>(self: &AdventParser, input: &[u8]) -> Duration {
+    // SAFETY: we were originally given a fn(&[u8]) -> T
+    let f: fn(&[u8]) -> T = unsafe { core::mem::transmute(self.capture) };
+    core::hint::black_box((|| {
+      let start = Instant::now();
+      f(input);
+      start.elapsed()
+    })())
+  }
 }
 
 #[derive(Clone, Copy, Debug, Default, Hash)]
@@ -56,7 +88,7 @@ pub struct AdventSolver {
   day: i64,
   a: Option<SolverInternal>,
   b: Option<SolverInternal>,
-  p: Option<(ParseInternal, RunnerInternal)>,
+  p: Option<(AdventParser, RunnerInternal)>,
 }
 
 impl AdventSolver {
@@ -69,20 +101,29 @@ impl AdventSolver {
     }
   }
 
-  pub const fn new<I: AocParser>(day: i64, a: Option<SolverFn<I>>, b: Option<SolverFn<I>>) -> Self {
-    let ta = match a {
-      None => None,
-      Some(f) => unsafe { Some(core::mem::transmute(f)) },
-    };
-    let tb = match b {
-      None => None,
-      Some(f) => unsafe { Some(core::mem::transmute(f)) },
-    };
-    Self {
-      day,
-      p: Some((erased_parser::<I>, run::<I>)),
-      a: ta,
-      b: tb,
+  pub const fn new<I>(
+    day: i64,
+    p: Option<ParserFn<I>>,
+    a: Option<SolverFn<I>>,
+    b: Option<SolverFn<I>>,
+  ) -> Self {
+    if let Some(p) = p {
+      let ta = match a {
+        None => None,
+        Some(f) => unsafe { Some(core::mem::transmute(f)) },
+      };
+      let tb = match b {
+        None => None,
+        Some(f) => unsafe { Some(core::mem::transmute(f)) },
+      };
+      Self {
+        day,
+        p: Some((AdventParser::new(p), run::<I>)),
+        a: ta,
+        b: tb,
+      }
+    } else {
+      Self::new_empty(day)
     }
   }
 
@@ -92,7 +133,8 @@ impl AdventSolver {
 
   pub fn run(&self, input: &[u8]) {
     if let Some((p, r)) = self.p {
-      let input = p(input);
+      let (input, input_time) = (p.parse_erased)(&p, input);
+      println!("parse: {}us", input_time.as_micros());
 
       let start = Instant::now();
       let a = self.a.map(|f| r(f, input.ptr));
@@ -114,5 +156,28 @@ impl AdventSolver {
       // input is of type Erased, and gets dropped, which calls the correct
       // freeing function
     }
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::{AdventSolver, Solution};
+  type Input = Vec<u8>;
+  const TEST_STRING: &[u8] = b"012345678901234567890123456789012345678901234567890123456789";
+
+  fn solve_a(i: &Vec<u8>) -> Solution {
+    Solution::Number(i.len() as i64)
+  }
+  fn solve_b(i: &Vec<u8>) -> Solution {
+    Solution::Text(str::from_utf8(&i[3..10]).expect("ok").to_owned())
+  }
+  fn parse(i: &[u8]) -> Input {
+    i.to_owned()
+  }
+
+  #[test]
+  fn test_erase() {
+    let solver = AdventSolver::new(1, Some(parse), Some(solve_a), Some(solve_b));
+    solver.run(TEST_STRING);
   }
 }

@@ -15,17 +15,19 @@ macro_rules! count_tts {
 #[macro_export]
 macro_rules! impl_solver {
   ($day:literal) => {
-    pub const SOLVER: $crate::AdventSolver = $crate::AdventSolver::new_empty($day);
+    pub const SOLVER: $crate::AdventSolver =
+      $crate::AdventSolver::new::<()>($day, None, None, None);
   };
   ($day:literal, $p:ident) => {
-    pub const SOLVER: $crate::AdventSolver = $crate::AdventSolver::new::<$p>($day, None, None);
+    pub const SOLVER: $crate::AdventSolver = $crate::AdventSolver::new($day, Some($p), None, None);
   };
-  ($day:literal, $p:ident, $a:expr) => {
-    pub const SOLVER: $crate::AdventSolver = $crate::AdventSolver::new::<$p>($day, Some($a), None);
-  };
-  ($day:literal, $p:ident, $a:expr, $b:expr) => {
+  ($day:literal, $p:ident, $a:ident) => {
     pub const SOLVER: $crate::AdventSolver =
-      $crate::AdventSolver::new::<$p>($day, Some($a), Some($b));
+      $crate::AdventSolver::new($day, Some($p), Some($a), None);
+  };
+  ($day:literal, $p:ident, $a:ident, $b:ident) => {
+    pub const SOLVER: $crate::AdventSolver =
+      $crate::AdventSolver::new($day, Some($p), Some($a), Some($b));
   };
 }
 
