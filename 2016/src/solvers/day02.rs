@@ -1,2 +1,2 @@
 use aoc::impl_solver;
-impl_solver!(2);
+impl_solver!(SOLVER, 2);

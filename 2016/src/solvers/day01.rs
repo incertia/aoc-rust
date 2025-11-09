@@ -1,4 +1,4 @@
-use aoc::{Solution, impl_solver};
+use aoc::{Solution, impl_solver_named};
 
 use std::collections::{BTreeSet, HashSet};
 use std::str::FromStr;
@@ -214,25 +214,31 @@ impl<Collection> State<Collection> {
   }
 }
 
-fn parse(input: &[u8]) -> Input {
-  Input {
-    insts: input
-      .split(|c| *c == b',')
-      .map(|s| {
-        unsafe { str::from_utf8_unchecked(s) }
-          .trim()
-          .parse()
-          .expect("correctly formatted input")
-      })
-      .collect(),
-  }
-}
-
 struct Input {
   insts: Box<[Instruction]>,
 }
+fn parse(input: &[u8]) -> impl Iterator<Item = Instruction> + Clone {
+  input.split(|c| *c == b',').map(|s| {
+    unsafe { str::from_utf8_unchecked(s) }
+      .trim()
+      .parse()
+      .expect("correctly formatted input")
+  })
+}
+fn parse_collect(input: &[u8]) -> Input {
+  Input {
+    insts: parse(input).collect(),
+  }
+}
 
-fn solve_a(input: &Input) -> Solution {
+fn solve_a(input: &(impl Iterator<Item = Instruction> + Clone)) -> Solution {
+  let state = input
+    .clone()
+    .fold(State::<()>::default(), |st, inst| st.step_a(inst));
+
+  Solution::Number(state.pos.taxicab())
+}
+fn solve_a_collect(input: &Input) -> Solution {
   let state = input
     .insts
     .iter()
@@ -241,7 +247,14 @@ fn solve_a(input: &Input) -> Solution {
   Solution::Number(state.pos.taxicab())
 }
 
-fn solve_b(input: &Input) -> Solution {
+fn solve_b(input: &(impl Iterator<Item = Instruction> + Clone)) -> Solution {
+  let state = input
+    .clone()
+    .try_fold(State::<BTreeSet<_>>::default(), |st, inst| st.step_b(inst));
+
+  unsafe { Solution::Number(state.err().unwrap_unchecked().taxicab()) }
+}
+fn solve_b_collect(input: &Input) -> Solution {
   let state = input
     .insts
     .iter()
@@ -250,4 +263,12 @@ fn solve_b(input: &Input) -> Solution {
   unsafe { Solution::Number(state.err().unwrap_unchecked().taxicab()) }
 }
 
-impl_solver!(1, parse, solve_a, solve_b);
+impl_solver_named!(SOLVER_ITER, 1, "day 1 parse iter", parse, solve_a, solve_b);
+impl_solver_named!(
+  SOLVER_COLLECT,
+  1,
+  "day 1 parse collect",
+  parse_collect,
+  solve_a_collect,
+  solve_b_collect
+);

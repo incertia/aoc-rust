@@ -4,8 +4,8 @@ use core::ptr::NonNull;
 use std::time::{Duration, Instant};
 
 type SolverInternal = fn(input: &()) -> Solution;
-type ParserFn<I> = fn(input: &[u8]) -> I;
-type SolverFn<I> = fn(input: &I) -> Solution;
+type ParserFn<'a, I> = fn(input: &'a [u8]) -> I;
+type SolverFn<'a, I> = fn(input: &'a I) -> Solution;
 type RunnerInternal = fn(capture: SolverInternal, input: NonNull<()>) -> Solution;
 
 struct Erased {
@@ -55,7 +55,7 @@ struct AdventParser {
 }
 
 impl AdventParser {
-  const fn new<T>(f: fn(&[u8]) -> T) -> Self {
+  const fn new<'a, T>(f: fn(&'a [u8]) -> T) -> Self {
     Self {
       capture: unsafe { core::mem::transmute(f) },
       parse_erased_fn: Self::parse_erased_fn::<T>,
@@ -94,6 +94,7 @@ impl AdventParser {
 #[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct AdventSolver {
   day: i64,
+  name: Option<&'static str>,
   a: Option<SolverInternal>,
   b: Option<SolverInternal>,
   p: Option<(AdventParser, RunnerInternal)>,
@@ -103,17 +104,19 @@ impl AdventSolver {
   pub const fn new_empty(day: i64) -> Self {
     Self {
       day,
+      name: None,
       p: None,
       a: None,
       b: None,
     }
   }
 
-  pub const fn new<I>(
+  pub const fn new<'a, I>(
     day: i64,
-    p: Option<ParserFn<I>>,
-    a: Option<SolverFn<I>>,
-    b: Option<SolverFn<I>>,
+    name: Option<&'static str>,
+    p: Option<ParserFn<'a, I>>,
+    a: Option<SolverFn<'a, I>>,
+    b: Option<SolverFn<'a, I>>,
   ) -> Self {
     if let Some(p) = p {
       let ta = match a {
@@ -126,6 +129,7 @@ impl AdventSolver {
       };
       Self {
         day,
+        name,
         p: Some((AdventParser::new(p), run::<I>)),
         a: ta,
         b: tb,
@@ -142,7 +146,8 @@ impl AdventSolver {
   pub fn run(&self, input: &[u8]) {
     if let Some((p, r)) = self.p {
       let (input, input_time) = p.parse_erased(input);
-      println!("parse: {}us", input_time.as_micros());
+      let prefix = self.name.unwrap_or("unnamed");
+      println!("{}: parse: {}us", prefix, input_time.as_micros());
 
       let start = Instant::now();
       let a = self.a.map(|f| r(f, input.ptr));
@@ -152,14 +157,12 @@ impl AdventSolver {
       let b = self.b.map(|f| r(f, input.ptr));
       let b_time = start.elapsed();
 
-      match a {
-        Some(solution) => println!("a ({}us): {}", a_time.as_micros(), solution),
-        _ => (),
+      let print = |s: Solution, part: &str, time: Duration| {
+        println!("{}: {} ({}us): {}", prefix, part, time.as_micros(), s);
       };
-      match b {
-        Some(solution) => println!("b ({}us): {}", b_time.as_micros(), solution),
-        _ => (),
-      };
+
+      a.into_iter().for_each(|s| print(s, "a", a_time));
+      b.into_iter().for_each(|s| print(s, "b", b_time));
 
       // input is of type Erased, and gets dropped, which calls the correct
       // freeing function
@@ -185,7 +188,7 @@ mod test {
 
   #[test]
   fn test_erase() {
-    let solver = AdventSolver::new(1, Some(parse), Some(solve_a), Some(solve_b));
+    let solver = AdventSolver::new(1, None, Some(parse), Some(solve_a), Some(solve_b));
     solver.run(TEST_STRING);
   }
 }
