@@ -1,6 +1,7 @@
 mod error;
 pub mod macros;
 mod solver;
+pub(crate) mod specialize;
 mod year;
 
 use clap::Parser;
