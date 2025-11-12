@@ -49,22 +49,34 @@ pub unsafe fn bench_day<T>(
   parser: fn(&[u8]) -> (),
   solve_a: Option<fn(&()) -> Solution>,
   solve_b: Option<fn(&()) -> Solution>,
+  samples: Option<u32>,
   benches: &mut Benches,
 ) {
   let my_parse: fn(&[u8]) -> T = unsafe { core::mem::transmute(parser) };
   let my_input = my_parse(input);
   let ptr_input = NonNull::from_ref(&my_input);
   let erased_input = unsafe { core::mem::transmute(ptr_input) };
+  let samples = samples.unwrap_or(5000);
 
-  benches.push(Bench::new(format!("{}: parse", prefix)).run(|| my_parse(input)));
+  benches.push(
+    Bench::new(format!("{}: parse", prefix))
+      .with_samples(samples)
+      .run(|| my_parse(input)),
+  );
 
   if let Some(solve_a) = solve_a {
-    benches
-      .push(Bench::new(format!("{}: solve_a", prefix)).run(|| run::<T>(erased_input, solve_a)));
+    benches.push(
+      Bench::new(format!("{}: solve_a", prefix))
+        .with_samples(samples)
+        .run(|| run::<T>(erased_input, solve_a)),
+    );
   }
 
   if let Some(solve_b) = solve_b {
-    benches
-      .push(Bench::new(format!("{}: solve_b", prefix)).run(|| run::<T>(erased_input, solve_b)));
+    benches.push(
+      Bench::new(format!("{}: solve_b", prefix))
+        .with_samples(samples)
+        .run(|| run::<T>(erased_input, solve_b)),
+    );
   }
 }

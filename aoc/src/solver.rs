@@ -18,6 +18,7 @@ type BencherInternal = unsafe fn(
   fn(&[u8]) -> (),
   Option<SolverInternal>,
   Option<SolverInternal>,
+  Option<u32>,
   &mut Benches,
 ) -> ();
 
@@ -87,13 +88,13 @@ impl AdventSolver {
     }
   }
 
-  pub fn bench(&self, input: &[u8], benches: &mut Benches) {
+  pub fn bench(&self, input: &[u8], samples: Option<u32>, benches: &mut Benches) {
     if let Some((p, _, b)) = self.p {
       let prefix = self.name.unwrap_or("unnamed");
 
       // SAFETY: these were all cast from the same input type I in
       // AdventSolver::new()
-      unsafe { b(input, prefix, p, self.a, self.b, benches) };
+      unsafe { b(input, prefix, p, self.a, self.b, samples, benches) };
     }
   }
 }

@@ -77,12 +77,17 @@ impl AdventYearSolver {
     Ok(())
   }
 
-  pub fn bench(&self, day: i64, benches: &mut Benches) -> Result<(), AdventRuntimeError> {
+  pub fn bench(
+    &self,
+    day: i64,
+    samples: Option<u32>,
+    benches: &mut Benches,
+  ) -> Result<(), AdventRuntimeError> {
     let input = load_input(self.year, day)?;
 
     for s in self.solvers {
       if s.day() == day {
-        s.bench(&input, benches);
+        s.bench(&input, samples, benches);
       }
     }
 

@@ -31,6 +31,9 @@ struct AocArgs {
 
   #[arg(short, long)]
   bench: bool,
+
+  #[arg(short, long)]
+  samples: Option<u32>,
 }
 
 pub fn aoc_main(solver: &AdventYearSolver) -> Result<(), AdventRuntimeError> {
@@ -38,7 +41,7 @@ pub fn aoc_main(solver: &AdventYearSolver) -> Result<(), AdventRuntimeError> {
   let day = args.day.unwrap_or(1);
   if args.bench {
     let mut benches = brunch::Benches::default();
-    solver.bench(day, &mut benches)?;
+    solver.bench(day, args.samples, &mut benches)?;
     benches.finish();
     Ok(())
   } else {
