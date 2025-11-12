@@ -1,6 +1,8 @@
 use crate::Solution;
 use crate::specialize;
 
+use brunch::Benches;
+
 // user facing
 type ParserFn<'a, I> = fn(input: &'a [u8]) -> I;
 type SolverFn<'a, I> = fn(input: &'a I) -> Solution;
@@ -10,12 +12,20 @@ type ParserInternal = fn(input: &[u8]) -> ();
 type SolverInternal = fn(input: &()) -> Solution;
 type RunnerInternal =
   unsafe fn(&[u8], &str, fn(&[u8]) -> (), Option<SolverInternal>, Option<SolverInternal>) -> ();
+type BencherInternal = unsafe fn(
+  &[u8],
+  &str,
+  fn(&[u8]) -> (),
+  Option<SolverInternal>,
+  Option<SolverInternal>,
+  &mut Benches,
+) -> ();
 
 #[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct AdventSolver {
   day: i64,
   name: Option<&'static str>,
-  p: Option<(ParserInternal, RunnerInternal)>,
+  p: Option<(ParserInternal, RunnerInternal, BencherInternal)>,
   a: Option<SolverInternal>,
   b: Option<SolverInternal>,
 }
@@ -50,7 +60,11 @@ impl AdventSolver {
       Self {
         day,
         name,
-        p: Some((unsafe { core::mem::transmute(p) }, specialize::run_day::<I>)),
+        p: Some((
+          unsafe { core::mem::transmute(p) },
+          specialize::run_day::<I>,
+          specialize::bench_day::<I>,
+        )),
         a: ta,
         b: tb,
       }
@@ -64,12 +78,22 @@ impl AdventSolver {
   }
 
   pub fn run(&self, input: &[u8]) {
-    if let Some((p, r)) = self.p {
+    if let Some((p, r, _)) = self.p {
       let prefix = self.name.unwrap_or("unnamed");
 
       // SAFETY: these were all cast from the same input type I in
       // AdventSolver::new()
       unsafe { r(input, prefix, p, self.a, self.b) };
+    }
+  }
+
+  pub fn bench(&self, input: &[u8], benches: &mut Benches) {
+    if let Some((p, _, b)) = self.p {
+      let prefix = self.name.unwrap_or("unnamed");
+
+      // SAFETY: these were all cast from the same input type I in
+      // AdventSolver::new()
+      unsafe { b(input, prefix, p, self.a, self.b, benches) };
     }
   }
 }

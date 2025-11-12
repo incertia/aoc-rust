@@ -1,8 +1,8 @@
 use crate::Solution;
+use brunch::{Bench, Benches};
 use core::ptr::NonNull;
 use std::time::{Duration, Instant};
 
-// fn(&[u8]) -> T =>
 pub fn run<T>(input: NonNull<()>, r: fn(&()) -> Solution) -> (Solution, Duration) {
   let input_t: NonNull<T> = unsafe { core::mem::transmute(input) };
   let my_ref: &T = unsafe { input_t.as_ref() };
@@ -44,11 +44,27 @@ pub unsafe fn run_day<T>(
 }
 
 pub unsafe fn bench_day<T>(
-  _input: &[u8],
-  _prefix: &str,
-  _parser: fn(&[u8]) -> (),
-  _solve_a: Option<fn(&()) -> Solution>,
-  _solve_b: Option<fn(&()) -> Solution>,
+  input: &[u8],
+  prefix: &str,
+  parser: fn(&[u8]) -> (),
+  solve_a: Option<fn(&()) -> Solution>,
+  solve_b: Option<fn(&()) -> Solution>,
+  benches: &mut Benches,
 ) {
-  todo!()
+  let my_parse: fn(&[u8]) -> T = unsafe { core::mem::transmute(parser) };
+  let my_input = my_parse(input);
+  let ptr_input = NonNull::from_ref(&my_input);
+  let erased_input = unsafe { core::mem::transmute(ptr_input) };
+
+  benches.push(Bench::new(format!("{}: parse", prefix)).run(|| my_parse(input)));
+
+  if let Some(solve_a) = solve_a {
+    benches
+      .push(Bench::new(format!("{}: solve_a", prefix)).run(|| run::<T>(erased_input, solve_a)));
+  }
+
+  if let Some(solve_b) = solve_b {
+    benches
+      .push(Bench::new(format!("{}: solve_b", prefix)).run(|| run::<T>(erased_input, solve_b)));
+  }
 }

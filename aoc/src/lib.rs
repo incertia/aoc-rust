@@ -28,10 +28,20 @@ pub use year::AdventYearSolver;
 #[derive(Parser)]
 struct AocArgs {
   day: Option<i64>,
+
+  #[arg(short, long)]
+  bench: bool,
 }
 
 pub fn aoc_main(solver: &AdventYearSolver) -> Result<(), AdventRuntimeError> {
   let args = AocArgs::parse();
   let day = args.day.unwrap_or(1);
-  solver.run(day)
+  if args.bench {
+    let mut benches = brunch::Benches::default();
+    solver.bench(day, &mut benches)?;
+    benches.finish();
+    Ok(())
+  } else {
+    solver.run(day)
+  }
 }

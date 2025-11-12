@@ -7,3 +7,4 @@ members = [
 
 [workspace.dependencies]
 aoc = { path = "aoc" }
+brunch = "0.11.0"
