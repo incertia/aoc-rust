@@ -85,9 +85,14 @@ impl AdventYearSolver {
   ) -> Result<(), AdventRuntimeError> {
     let input = load_input(self.year, day)?;
 
+    let mut spacer = false;
     for s in self.solvers {
       if s.day() == day {
+        if spacer {
+          benches.push(brunch::Bench::spacer());
+        }
         s.bench(&input, samples, benches);
+        spacer = true;
       }
     }
 
