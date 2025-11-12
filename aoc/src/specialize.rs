@@ -58,17 +58,19 @@ pub unsafe fn bench_day<T>(
   let erased_input = unsafe { core::mem::transmute(ptr_input) };
   let samples = samples.unwrap_or(5000);
 
+  use core::hint::black_box;
+
   benches.push(
     Bench::new(format!("{}: parse", prefix))
       .with_samples(samples)
-      .run(|| my_parse(input)),
+      .run(|| black_box(my_parse(input))),
   );
 
   if let Some(solve_a) = solve_a {
     benches.push(
       Bench::new(format!("{}: solve_a", prefix))
         .with_samples(samples)
-        .run(|| run::<T>(erased_input, solve_a)),
+        .run(|| black_box(run::<T>(erased_input, solve_a))),
     );
   }
 
@@ -76,7 +78,7 @@ pub unsafe fn bench_day<T>(
     benches.push(
       Bench::new(format!("{}: solve_b", prefix))
         .with_samples(samples)
-        .run(|| run::<T>(erased_input, solve_b)),
+        .run(|| black_box(run::<T>(erased_input, solve_b))),
     );
   }
 }
