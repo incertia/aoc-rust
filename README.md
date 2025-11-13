@@ -42,7 +42,7 @@ solver. This will parse the command line arguments and run the desired day. You
 can change the error to anything that implements `From<AdventRuntimeError>`.
 ```rust
 fn main() -> Result<(), AdventRuntimeError> {
-  aoc_main(&solvers::SOLVER)
+    aoc_main(&solvers::SOLVER)
 }
 ```
 Support for a collection of year solvers is in the works.
@@ -70,8 +70,8 @@ To benchmark your code, use `--bench` and optionally specify the number of
 `--samples` to take. This uses [brunch][brunch] under the hood. It is okay at
 benching, but ideally we should get a better benchmarking tool that does not
 benchmark `Drop` times or supports arbitrary functions that return
-`std::time::Duration`. Unfortunately criterion does not fit the bill here as
-there is no way to actually run it without [criterion][criterion] defining its
+`std::time::Duration`. Unfortunately [criterion][criterion] does not fit the
+bill here as there is no way to actually run it without criterion defining its
 own main function, which is dumb.
 ```console
 $ cargo run --release -- 1 --bench --samples 10000
